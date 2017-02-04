@@ -2,7 +2,7 @@
 docker-compose up -d rabbitmq server client
 
 # scale up clients
-docker-compose scale client=600
+docker-compose scale client=10
 
 # check state
 docker-compose ps

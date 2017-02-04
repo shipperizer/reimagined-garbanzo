@@ -1,8 +1,8 @@
 FROM python:3.6-slim
 
-RUN apt-get clean && apt-get update && apt-get -y install build-essential
+RUN apt-get clean && apt-get update && apt-get -y install build-essential supervisor
 
-COPY Makefile requirements.txt /var/app/
+COPY Makefile supervisor.conf requirements.txt /var/app/
 
 WORKDIR /var/app
 
@@ -10,4 +10,4 @@ RUN make build
 
 COPY . /var/app
 
-CMD ["make", "server"]
+CMD ["bash"]

@@ -14,13 +14,15 @@ services:
   server:
     image: shipperizer/reimagined-garbanzo:latest
     build: .
-    command: make server
+    command: supervisord -c /var/app/supervisor.conf
     links:
       - rabbitmq:rabbitmq
     environment:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=rabbit
       - RABBITMQ_PASS=rabbit
+    depends_on:
+      - rabbitmq
 
   client:
     image: shipperizer/reimagined-garbanzo:latest
@@ -32,3 +34,5 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=rabbit
       - RABBITMQ_PASS=rabbit
+    depends_on:
+      - server
