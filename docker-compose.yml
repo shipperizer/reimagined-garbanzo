@@ -1,0 +1,34 @@
+version: '2'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    hostname: rabbit
+    environment:
+      - RABBITMQ_DEFAULT_USER=rabbit
+      - RABBITMQ_DEFAULT_PASS=rabbit
+
+  server:
+    image: shipperizer/reimagined-garbanzo:latest
+    build: .
+    command: make server
+    links:
+      - rabbitmq:rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=rabbit
+      - RABBITMQ_PASS=rabbit
+
+  client:
+    image: shipperizer/reimagined-garbanzo:latest
+    build: .
+    links:
+      - rabbitmq:rabbitmq
+    command: make client
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=rabbit
+      - RABBITMQ_PASS=rabbit
