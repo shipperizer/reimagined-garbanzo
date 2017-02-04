@@ -43,8 +43,7 @@ def register():
             'registrator',
             '',
             json.dumps({'client': str(key)}),
-            pika.BasicProperties(content_type='application/json', delivery_mode=2),
-            immediate=True
+            pika.BasicProperties(content_type='application/json', delivery_mode=2)
         )
         logging.info('Registering with key {}'.format(key))
     finally:

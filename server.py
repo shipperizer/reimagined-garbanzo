@@ -10,7 +10,7 @@ import pika
 
 
 def mq_connection(blocking=True):
-    credentials = pika.PlainCredentials(environ.get('RABBITMQ_USER', 'rabbitmq'), environ.get('RABBITMQ_PASS', 'rabbitmq'))
+    credentials = pika.PlainCredentials(environ.get('RABBITMQ_USER', 'rabbit'), environ.get('RABBITMQ_PASS', 'rabbit'))
     if blocking:
         return pika.BlockingConnection(pika.ConnectionParameters(host=environ.get('RABBITMQ_HOST', 'localhost'), credentials=credentials))
     else:
@@ -20,6 +20,7 @@ def mq_connection(blocking=True):
 def registrator():
     connection = None
     try:
+        logging.error(' [*] Waiting for clients. To exit press CTRL+C')
         connection = mq_connection()
         channel = connection.channel()
 
@@ -30,7 +31,6 @@ def registrator():
 
         channel.queue_bind(exchange='registrator', queue=queue_name)
 
-        logging.info(' [*] Waiting for clients. To exit press CTRL+C')
 
         def callback(ch, method, properties, body):
             logging.info('Registered client {}'.format(json.loads(body).get('client')))
@@ -62,7 +62,7 @@ def run():
     connection.close()
 
 if __name__ == '__main__':
-    if sys.argv[1:] == 'registrator':
+    if len(sys.argv) > 1 and sys.argv[1:][0] == 'registrator':
         registrator()
     else:
         run()
