@@ -6,17 +6,60 @@ from uuid import uuid4, UUID
 from pathlib import Path
 import json
 
+from celery import Celery
+from celery.schedules import crontab
 import pika
 
+
+def init_logging():
+    logger = logging.getLogger('client')
+    logger.setLevel(logging.INFO)
+    sh = logging.StreamHandler()
+    formatter = logging.Formatter('[%(levelname)s] - [%(asctime)s] - %(message)s')
+    sh.setFormatter(formatter)
+    logger.addHandler(sh)
+    return logger
+
+
+def init_celery():
+    redis = environ.get('REDIS_HOST', 'localhost')
+
+    app = Celery('tasks', broker='redis://{}:6379/0'.format(redis), backend='redis://{}:6379/1'.format(redis))
+
+    @app.on_after_configure.connect
+    def setup_periodic_tasks(sender, **kwargs):
+        sender.add_periodic_task(60.0, heartbeat.s(), name='heartbeat')
+
+    @app.task
+    def heartbeat():
+        key = get_key()
+        connection = mq_connection()
+        channel = connection.channel()
+
+        channel.basic_publish(
+            'registrator',
+            '',
+            json.dumps({'client': str(key)}),
+            pika.BasicProperties(content_type='application/json', delivery_mode=1)
+        )
+
+        logger.info('Heartbeat {}'.format(key))
+        connection and connection.close()
+
+    return app
+
+
+logger = init_logging()
+celery = init_celery()
 
 def get_key(file='.uuid'):
     uuid = Path(file)
     if uuid.exists() and uuid.is_file():
-        logging.warning('Key file found')
+        logger.warning('Key file found')
         with open(file, 'r') as f:
             return UUID(f.read())
     else:
-        logging.warning('Key file not found...creating one...')
+        logger.warning('Key file not found...creating one...')
         key = uuid4()
         with open(file, 'w') as f:
             f.write(str(key))
@@ -24,12 +67,11 @@ def get_key(file='.uuid'):
 
 
 def mq_connection(blocking=True):
-    credentials = pika.PlainCredentials(environ.get('RABBITMQ_USER', 'rabbitmq'), environ.get('RABBITMQ_PASS', 'rabbitmq'))
+    credentials = pika.PlainCredentials(environ.get('RABBITMQ_USER', 'rabbit'), environ.get('RABBITMQ_PASS', 'rabbit'))
     if blocking:
         return pika.BlockingConnection(pika.ConnectionParameters(host=environ.get('RABBITMQ_HOST', 'localhost'), credentials=credentials))
     else:
         raise Exception('Only blocking is supported right now')
-
 
 
 def register():
@@ -43,9 +85,9 @@ def register():
             'registrator',
             '',
             json.dumps({'client': str(key)}),
-            pika.BasicProperties(content_type='application/json', delivery_mode=2)
+            pika.BasicProperties(content_type='application/json', delivery_mode=1)
         )
-        logging.info('Registering with key {}'.format(key))
+        logger.info('Registering with key {}'.format(key))
     finally:
         connection and connection.close()
 
@@ -63,10 +105,10 @@ def run():
     channel.queue_bind(exchange='logs',
                        queue=queue_name)
 
-    logging.info(' [*] Waiting for logs. To exit press CTRL+C')
+    logger.info(' [*] Waiting for logs. To exit press CTRL+C')
 
     def callback(ch, method, properties, body):
-        logging.info(" [x] {}".format(body))
+        logger.info(" [x] {}".format(body))
 
     channel.basic_consume(callback, queue=queue_name, no_ack=True)
 

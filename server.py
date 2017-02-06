@@ -9,6 +9,19 @@ import json
 import pika
 
 
+def init_logging():
+    logger = logging.getLogger('server')
+    logger.setLevel(logging.INFO)
+    sh = logging.StreamHandler()
+    formatter = logging.Formatter('[%(levelname)s] - [%(asctime)s] - %(message)s')
+    sh.setFormatter(formatter)
+    logger.addHandler(sh)
+    return logger
+
+
+logger = init_logging()
+
+
 def mq_connection(blocking=True):
     credentials = pika.PlainCredentials(environ.get('RABBITMQ_USER', 'rabbit'), environ.get('RABBITMQ_PASS', 'rabbit'))
     if blocking:
@@ -18,28 +31,24 @@ def mq_connection(blocking=True):
 
 
 def registrator():
-    connection = None
-    try:
-        logging.error(' [*] Waiting for clients. To exit press CTRL+C')
-        connection = mq_connection()
-        channel = connection.channel()
+    logger.info(' [*] Waiting for clients. To exit press CTRL+C')
+    connection = mq_connection()
+    channel = connection.channel()
 
-        channel.exchange_declare(exchange='registrator', type='fanout')
+    channel.exchange_declare(exchange='registrator', type='fanout')
 
-        result = channel.queue_declare(exclusive=True)
-        queue_name = result.method.queue
+    result = channel.queue_declare()
+    queue_name = result.method.queue
 
-        channel.queue_bind(exchange='registrator', queue=queue_name)
+    channel.queue_bind(exchange='registrator', queue=queue_name)
 
 
-        def callback(ch, method, properties, body):
-            logging.info('Registered client {}'.format(json.loads(body).get('client')))
+    def callback(ch, method, properties, body):
+        logger.info('Registered client {}'.format(json.loads(body).get('client')))
 
-        channel.basic_consume(callback, queue=queue_name, no_ack=True)
+    channel.basic_consume(callback, queue=queue_name, no_ack=True)
 
-        channel.start_consuming()
-    finally:
-        connection and connection.close()
+    channel.start_consuming()
 
 
 def run():
@@ -56,7 +65,7 @@ def run():
                               routing_key='',
                               body=message)
 
-        logging.info(" [x] Sent{0} #{1}".format(message, i))
+        logger.info(" [x] Sent{0} #{1}".format(message, i))
         sleep(2)
 
     connection.close()

@@ -11,10 +11,15 @@ services:
       - RABBITMQ_DEFAULT_USER=rabbit
       - RABBITMQ_DEFAULT_PASS=rabbit
 
+  redis:
+    image: redis:3.2.3
+    ports:
+      - 6379:6379
+
   server:
     image: shipperizer/reimagined-garbanzo:latest
     build: .
-    command: supervisord -c /var/app/supervisor.conf
+    command: supervisord -c /var/app/server.conf
     links:
       - rabbitmq:rabbitmq
     environment:
@@ -29,10 +34,31 @@ services:
     build: .
     links:
       - rabbitmq:rabbitmq
-    command: make client
+      - redis:redis_host
+    command: supervisord -c /var/app/client.conf
     environment:
+      - REDIS_HOST=redis
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=rabbit
       - RABBITMQ_PASS=rabbit
+      - C_FORCE_ROOT=true
     depends_on:
       - server
+      - redis
+
+  beat:
+    image: shipperizer/reimagined-garbanzo:latest
+    build: .
+    links:
+      - rabbitmq:rabbitmq
+      - redis:redis_host
+    command: make beat
+    environment:
+      - REDIS_HOST=redis
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=rabbit
+      - RABBITMQ_PASS=rabbit
+      - C_FORCE_ROOT=true
+    depends_on:
+      - server
+      - redis
