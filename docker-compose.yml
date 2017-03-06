@@ -4,12 +4,21 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     ports:
+      - 5671:5671
       - 5672:5672
+      - 15671:15671
       - 15672:15672
     hostname: rabbit
     environment:
       - RABBITMQ_DEFAULT_USER=rabbit
       - RABBITMQ_DEFAULT_PASS=rabbit
+      - RABBITMQ_SSL_CACERTFILE=/tmp/ca/cacert.pem
+      - RABBITMQ_SSL_CERTFILE=/tmp/server/cert.pem
+      - RABBITMQ_SSL_KEYFILE=/tmp/server/key.pem
+    volumes:
+      - ./server/cert.pem:/tmp/server/cert.pem
+      - ./server/key.pem:/tmp/server/key.pem
+      - ./testca/cacert.pem:/tmp/ca/cacert.pem
 
   redis:
     image: redis:3.2.3
@@ -28,6 +37,10 @@ services:
       - RABBITMQ_PASS=rabbit
     depends_on:
       - rabbitmq
+    volumes:
+      - ./client/cert.pem:/tmp/client/cert.pem
+      - ./client/key.pem:/tmp/client/key.pem
+      - ./testca/cacert.pem:/tmp/ca/cacert.pem
 
   client:
     image: shipperizer/reimagined-garbanzo:latest
@@ -45,6 +58,10 @@ services:
     depends_on:
       - server
       - redis
+    volumes:
+      - ./client/cert.pem:/tmp/client/cert.pem
+      - ./client/key.pem:/tmp/client/key.pem
+      - ./testca/cacert.pem:/tmp/ca/cacert.pem
 
   beat:
     image: shipperizer/reimagined-garbanzo:latest
@@ -62,3 +79,7 @@ services:
     depends_on:
       - server
       - redis
+    volumes:
+      - ./client/cert.pem:/tmp/client/cert.pem
+      - ./client/key.pem:/tmp/client/key.pem
+      - ./testca/cacert.pem:/tmp/ca/cacert.pem

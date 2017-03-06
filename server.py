@@ -24,8 +24,11 @@ logger = init_logging()
 
 def mq_connection(blocking=True):
     credentials = pika.PlainCredentials(environ.get('RABBITMQ_USER', 'rabbit'), environ.get('RABBITMQ_PASS', 'rabbit'))
+    ssl_opts = {'ca_certs': '/tmp/ca/cacert.pem', 'certfile': '/tmp/client/cert.pem', 'keyfile': '/tmp/client/key.pem'}
     if blocking:
-        return pika.BlockingConnection(pika.ConnectionParameters(host=environ.get('RABBITMQ_HOST', 'localhost'), credentials=credentials))
+        return pika.BlockingConnection(pika.ConnectionParameters(
+            host=environ.get('RABBITMQ_HOST', 'localhost'), port=5671, credentials=credentials, ssl=True, ssl_options=ssl_opts)
+        )
     else:
         raise Exception('Only blocking is supported right now')
 
