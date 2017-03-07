@@ -9,9 +9,6 @@ registrator:
 client:
 	python client.py
 
-build:
-	pip install -r requirements.txt
-
 beat:
 	rm -f /run/celerybeat.pid
 	celery -A client beat --pidfile=/run/celerybeat.pid
