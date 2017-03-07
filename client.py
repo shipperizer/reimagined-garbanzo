@@ -8,7 +8,6 @@ from datetime import timedelta
 import json
 
 from celery import Celery
-from celery.schedules import crontab
 import pika
 
 
@@ -106,14 +105,12 @@ def run():
     connection = mq_connection()
     channel = connection.channel()
 
-    channel.exchange_declare(exchange='logs',
-                             type='fanout')
+    channel.exchange_declare(exchange='logs', type='fanout')
 
     result = channel.queue_declare(exclusive=True)
     queue_name = result.method.queue
 
-    channel.queue_bind(exchange='logs',
-                       queue=queue_name)
+    channel.queue_bind(exchange='logs', queue=queue_name)
 
     logger.info(' [*] Waiting for logs. To exit press CTRL+C')
 

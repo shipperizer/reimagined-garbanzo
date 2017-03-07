@@ -5,7 +5,9 @@ import sys
 from os import environ
 from time import sleep
 import json
+from uuid import uuid4
 
+from celery import Celery
 import pika
 
 
@@ -19,7 +21,26 @@ def init_logging():
     return logger
 
 
+def init_celery():
+    redis = environ.get('REDIS_HOST', 'localhost')
+
+    app = Celery('server', broker='redis://{}:6379/2'.format(redis), backend='redis://{}:6379/3'.format(redis))
+
+    @app.task
+    def data():
+        connection = mq_connection()
+        channel = connection.channel()
+        channel.exchange_declare(exchange='logs', type='fanout')
+
+        message = json.dumps({'data': {'uuid': str(uuid4()), 'message': 'Payload incoming', 'type': 'data'}})
+        channel.basic_publish(exchange='logs', routing_key='', body=message)
+        logger.info("[x] Sent {0}".format(message))
+
+    return app
+
+
 logger = init_logging()
+celery = init_celery()
 
 
 def mq_connection(blocking=True):
@@ -68,12 +89,12 @@ def run():
                              type='fanout')
 
     for i in range(10000):
-        message = "Hello World!"
+        message = json.dumps({'message': "Here's the server, over!"})
         channel.basic_publish(exchange='logs',
                               routing_key='',
                               body=message)
 
-        logger.info(" [x] Sent{0} #{1}".format(message, i))
+        logger.info("[x] Sent {0} #{1}".format(message, i))
         sleep(15)
 
     connection.close()

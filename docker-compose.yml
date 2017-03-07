@@ -32,6 +32,7 @@ services:
     links:
       - rabbitmq:rabbitmq
     environment:
+      - REDIS_HOST=redis
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=rabbit
       - RABBITMQ_PASS=rabbit
