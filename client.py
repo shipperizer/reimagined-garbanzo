@@ -4,6 +4,7 @@ import logging
 from os import environ
 from uuid import uuid4, UUID
 from pathlib import Path
+from datetime import timedelta
 import json
 
 from celery import Celery
@@ -24,27 +25,33 @@ def init_logging():
 def init_celery():
     redis = environ.get('REDIS_HOST', 'localhost')
 
-    app = Celery('tasks', broker='redis://{}:6379/0'.format(redis), backend='redis://{}:6379/1'.format(redis))
-
-    @app.on_after_configure.connect
-    def setup_periodic_tasks(sender, **kwargs):
-        sender.add_periodic_task(60.0, heartbeat.s(), name='heartbeat')
+    app = Celery('client', broker='redis://{}:6379/0'.format(redis), backend='redis://{}:6379/1'.format(redis))
 
     @app.task
     def heartbeat():
         key = get_key()
-        connection = mq_connection()
-        channel = connection.channel()
+        try:
+            connection = mq_connection()
+            channel = connection.channel()
 
-        channel.basic_publish(
-            'registrator',
-            '',
-            json.dumps({'client': str(key)}),
-            pika.BasicProperties(content_type='application/json', delivery_mode=1)
-        )
+            channel.basic_publish(
+                'registrator',
+                '',
+                json.dumps({'client': str(key), 'type': 'heartbeat'}),
+                pika.BasicProperties(content_type='application/json', delivery_mode=1)
+            )
 
-        logger.info('Heartbeat {}'.format(key))
-        connection and connection.close()
+            logger.info('Heartbeat {}'.format(key))
+        finally:
+            connection and connection.close()
+
+    app.conf.beat_schedule = {
+        'heartbeat': {
+            'task': 'client.heartbeat',
+            'schedule': timedelta(seconds=60),
+            'args': (),
+        },
+    }
 
     return app
 
@@ -87,7 +94,7 @@ def register():
         channel.basic_publish(
             'registrator',
             '',
-            json.dumps({'client': str(key)}),
+            json.dumps({'client': str(key), 'type': 'registration'}),
             pika.BasicProperties(content_type='application/json', delivery_mode=1)
         )
         logger.info('Registering with key {}'.format(key))

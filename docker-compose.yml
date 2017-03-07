@@ -58,6 +58,7 @@ services:
     depends_on:
       - server
       - redis
+      - beat
     volumes:
       - ./client/cert.pem:/tmp/client/cert.pem
       - ./client/key.pem:/tmp/client/key.pem
@@ -69,7 +70,7 @@ services:
     links:
       - rabbitmq:rabbitmq
       - redis:redis_host
-    command: make beat
+    command: supervisord -c /var/app/beat.conf
     environment:
       - REDIS_HOST=redis
       - RABBITMQ_HOST=rabbitmq

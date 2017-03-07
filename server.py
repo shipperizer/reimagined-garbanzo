@@ -47,7 +47,12 @@ def registrator():
 
 
     def callback(ch, method, properties, body):
-        logger.info('Registered client {}'.format(json.loads(body).get('client')))
+        if json.loads(body).get('type') == 'registration':
+            logger.info('Registered client {}'.format(json.loads(body).get('client')))
+        elif json.loads(body).get('type') == 'heartbeat':
+            logger.info('Client {} alive'.format(json.loads(body).get('client')))
+        else:
+            logger.warning('Unknown message')
 
     channel.basic_consume(callback, queue=queue_name, no_ack=True)
 
@@ -69,7 +74,7 @@ def run():
                               body=message)
 
         logger.info(" [x] Sent{0} #{1}".format(message, i))
-        sleep(2)
+        sleep(15)
 
     connection.close()
 

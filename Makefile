@@ -14,7 +14,7 @@ build:
 
 beat:
 	rm -f /run/celerybeat.pid
-	celery -A client beat --pidfile=/run/celerybeat.pid --schedule=/run/celerybeat-schedule
+	celery -A client beat --pidfile=/run/celerybeat.pid
 
 build:
 	pip install -r requirements.txt
